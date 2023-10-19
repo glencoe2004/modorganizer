@@ -42,7 +42,8 @@ class DownloadProgressDelegate : public QStyledItemDelegate
   Q_OBJECT
 
 public:
-  DownloadProgressDelegate(DownloadManager* manager, DownloadListView* list);
+  DownloadProgressDelegate(DownloadManager* manager, DownloadListView* list,
+                           DownloadList* sourceModel);
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
              const QModelIndex& index) const override;
@@ -50,6 +51,7 @@ public:
 private:
   DownloadManager* m_Manager;
   DownloadListView* m_List;
+  DownloadList* m_sourceModel;
 };
 
 class DownloadListHeader : public QHeaderView
@@ -78,18 +80,18 @@ public:
   void setSourceModel(DownloadList* sourceModel);
 
 signals:
-  void installDownload(int index);
-  void queryInfo(int index);
-  void queryInfoMd5(int index);
-  void removeDownload(int index, bool deleteFile);
-  void restoreDownload(int index);
-  void cancelDownload(int index);
-  void pauseDownload(int index);
-  void resumeDownload(int index);
-  void visitOnNexus(int index);
-  void openFile(int index);
-  void openMetaFile(int index);
-  void openInDownloadsFolder(int index);
+  void installDownload(QUuid moId);
+  void queryInfo(QUuid moId);
+  void queryInfoMd5(QUuid moId);
+  void removeDownload(QUuid moId, bool deleteFile, int flag);
+  void restoreDownload(QUuid moId);
+  void cancelDownload(QUuid moId);
+  void pauseDownload(QUuid moId);
+  void resumeDownload(QUuid moId);
+  void visitOnNexus(QUuid moId);
+  void openFile(QUuid moId);
+  void openMetaFile(QUuid moId);
+  void openInDownloadsFolder(QUuid moId);
 
 protected:
   void keyPressEvent(QKeyEvent* event) override;
@@ -99,30 +101,30 @@ private slots:
   void onCustomContextMenu(const QPoint& point);
   void onHeaderCustomContextMenu(const QPoint& point);
 
-  void issueInstall(int index);
-  void issueDelete(int index);
-  void issueRemoveFromView(int index);
-  void issueRestoreToView(int index);
+  void issueInstall(QUuid moId);
+  void issueDelete(QUuid moId);
+  void issueRemoveFromView(QUuid moId);
+  void issueRestoreToView(QUuid moId);
   void issueRestoreToViewAll();
-  void issueVisitOnNexus(int index);
-  void issueOpenFile(int index);
-  void issueOpenMetaFile(int index);
-  void issueOpenInDownloadsFolder(int index);
-  void issueCancel(int index);
-  void issuePause(int index);
-  void issueResume(int index);
+  void issueVisitOnNexus(QUuid moId);
+  void issueOpenFile(QUuid moId);
+  void issueOpenMetaFile(QUuid moId);
+  void issueOpenInDownloadsFolder(QUuid moId);
+  void issueCancel(QUuid moId);
+  void issuePause(QUuid moId);
+  void issueResume(QUuid moId);
   void issueDeleteAll();
   void issueDeleteCompleted();
   void issueDeleteUninstalled();
   void issueRemoveFromViewAll();
   void issueRemoveFromViewCompleted();
   void issueRemoveFromViewUninstalled();
-  void issueQueryInfo(int index);
-  void issueQueryInfoMd5(int index);
+  void issueQueryInfo(QUuid moId);
+  void issueQueryInfoMd5(QUuid moId);
 
 private:
   DownloadManager* m_Manager;
-  DownloadList* m_SourceModel = 0;
+  DownloadList* m_SourceModel{nullptr};
 
   void resizeEvent(QResizeEvent* event);
 };

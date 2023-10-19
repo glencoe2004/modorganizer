@@ -20,10 +20,13 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DOWNLOADLIST_H
 #define DOWNLOADLIST_H
 
+#include "downloadlistitem.h"
 #include <QAbstractTableModel>
+#include <QList>
 
 class OrganizerCore;
 class DownloadManager;
+class DownloadInfo;
 class Settings;
 
 /**
@@ -45,6 +48,7 @@ public:
     COL_VERSION,
     COL_ID,
     COL_SOURCEGAME,
+    COL_MOID,
 
     // number of columns
     COL_COUNT
@@ -66,7 +70,6 @@ public:
   QModelIndex parent(const QModelIndex& child) const;
   Qt::ItemFlags flags(const QModelIndex& idx) const override;
   QMimeData* mimeData(const QModelIndexList& indexes) const override;
-
   virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
 
   /**
@@ -83,20 +86,57 @@ public:
   //
   bool lessThanPredicate(const QModelIndex& left, const QModelIndex& right);
 
-public slots:
+  DownloadListItem* getDownloadListItem(QUuid moId);
 
+private:
+  void setDownloadListItem(DownloadManager::DownloadInfo* downloadInfo,
+                           DownloadListItem& downloadListItem);
+
+  void downloadUpdated(DownloadManager::DownloadInfo* downloadInfo);
+  void updateData();
+
+public slots:
   /**
    * @brief used to inform the model that data has changed
    *
-   * @param row the row that changed. This can be negative to update the whole view
+   * @param downloadInfo the downloadInfo that changed.
    **/
-  void update(int row);
+  void update(DownloadManager::DownloadInfo* downloadInfo);
 
-  void aboutToUpdate();
+  /**
+   * @brief used to inform the model that data has been added
+   *
+   * @param downloadInfo the downloadInfo that changed.
+   **/
+  void downloadAdded(DownloadManager::DownloadInfo* downloadInfo);
+
+  /**
+   * @brief used to inform the model that data has been removed
+   *
+   * @param MO ID the MO ID that changed.
+   **/
+  void downloadRemoved(QUuid moId);
+
+  /**
+   * @brief used to inform the model that pending data has been added
+   *
+   * @param MO ID the MO ID that changed.
+   **/
+  void pendingDownloadAdded(QString moId);
+
+  /**
+   * @brief used to inform the model that pending data has been removed
+   *
+   * @param MO ID the MO ID that changed.
+   **/
+  void pendingDownloadRemoved(QString moId);
 
 private:
   DownloadManager& m_manager;
   Settings& m_settings;
+
+  QList<DownloadListItem> m_downloadListItems;
+  mutable std::unordered_map<QString, int> m_downloadIndexCache;
 };
 
 #endif  // DOWNLOADLIST_H

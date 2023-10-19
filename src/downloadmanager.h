@@ -79,37 +79,50 @@ public:
     STATE_UNINSTALLED
   };
 
-private:
+public:
   struct DownloadInfo
   {
+  public:
+    DownloadInfo()
+        : m_TotalSize(0), m_ReQueried(false), m_Hidden(false), m_HasData(false),
+          m_DownloadTimeLast(0), m_DownloadLast(0),
+          m_DownloadAcc(tag::rolling_window::window_size = 200),
+          m_DownloadTimeAcc(tag::rolling_window::window_size = 200)
+    {}
     ~DownloadInfo() { delete m_FileInfo; }
+
+    QString GetFileName() { return m_FileName; }
+    DownloadState GetState() { return m_State; }
+    MOBase::ModRepositoryFileInfo* GetFileInfo() { return m_FileInfo; }
+
     accumulator_set<qint64, stats<tag::rolling_mean>> m_DownloadAcc;
     accumulator_set<qint64, stats<tag::rolling_mean>> m_DownloadTimeAcc;
     qint64 m_DownloadLast;
     qint64 m_DownloadTimeLast;
-    unsigned int m_DownloadID;
+    int m_DownloadID{0};
     QString m_FileName;
     QFile m_Output;
-    QNetworkReply* m_Reply;
+    QNetworkReply* m_Reply{nullptr};
     QElapsedTimer m_StartTime;
-    qint64 m_PreResumeSize;
+    qint64 m_PreResumeSize{0LL};
     std::pair<int, QString> m_Progress;
     bool m_HasData;
-    DownloadState m_State;
-    int m_CurrentUrl;
+    DownloadState m_State{STATE_STARTED};
+    int m_CurrentUrl{0};
     QStringList m_Urls;
-    qint64 m_ResumePos;
+    qint64 m_ResumePos{0};
     qint64 m_TotalSize;
     QDateTime m_Created;  // used as a cache in DownloadManager::getFileTime, may not be
                           // valid elsewhere
     QByteArray m_Hash;
     QStringList m_GamesToQuery;
     QString m_RemoteFileName;
+    QUuid m_moId;
 
-    int m_Tries;
+    int m_Tries{AUTOMATIC_RETRIES};
     bool m_ReQueried;
 
-    quint32 m_TaskProgressId;
+    quint32 m_TaskProgressId{0};
 
     MOBase::ModRepositoryFileInfo* m_FileInfo{nullptr};
 
@@ -131,27 +144,20 @@ private:
      **/
     void setName(QString newName, bool renameFile);
 
-    unsigned int downloadID() { return m_DownloadID; }
-
     bool isPausedState();
 
     QString currentURL();
 
   private:
-    static unsigned int s_NextDownloadID;
+    static int s_NextDownloadID;
 
-  private:
-    DownloadInfo()
-        : m_TotalSize(0), m_ReQueried(false), m_Hidden(false), m_HasData(false),
-          m_DownloadTimeLast(0), m_DownloadLast(0),
-          m_DownloadAcc(tag::rolling_window::window_size = 200),
-          m_DownloadTimeAcc(tag::rolling_window::window_size = 200)
-    {}
+  public:
+    static void resetNextDownloadID();
   };
 
   friend class DownloadManagerProxy;
 
-  using SignalDownloadCallback = boost::signals2::signal<void(int)>;
+  using SignalDownloadCallback = boost::signals2::signal<void(QString)>;
 
 public:
   /**
@@ -270,172 +276,178 @@ public:
    * @brief retrieve the info of a pending download
    * @param index index of the pending download (index in the range [0,
    * numPendingDownloads()[)
-   * @return pair of modid, fileid
+   * @return pair of modid, fileid, and fileName
    */
-  std::tuple<QString, int, int> getPendingDownload(int index);
+  std::tuple<QString, int, int, QString> getPendingDownload(QString moId);
+
+  int getPendingDownloadIndex(QString gameName, int modId, int fileId, QString moId);
 
   /**
-   * @brief retrieve the full path to the download specified by index
+   * @brief retrieve the full path to the download specified by fileName
    *
-   * @param index the index to look up
+   * @param fileName the fileName of active or completed download
    * @return absolute path of the file
    **/
-  QString getFilePath(int index) const;
+  QString getFilePath(QUuid moId) const;
 
   /**
-   * @brief retrieve a descriptive name of the download specified by index
+   * @brief retrieve a descriptive name of the download specified by fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return display name of the file
    **/
-  QString getDisplayName(int index) const;
+  QString getDisplayName(QUuid moId) const;
 
   /**
-   * @brief retrieve the filename of the download specified by index
+   * @brief retrieve the filename of the download specified by downloadId
    *
-   * @param index index of the file to look up
+   * @param downloadId the downloadId of active or completed download
    * @return name of the file
    **/
-  QString getFileName(int index) const;
+  QString getFileName(int downloadId) const;
 
   /**
-   * @brief retrieve the file size of the download specified by index
+   * @brief retrieve the file size of the download specified by fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return size of the file (total size during download)
    */
-  qint64 getFileSize(int index) const;
+  qint64 getFileSize(QUuid moId) const;
 
   /**
-   * @brief retrieve the creation time of the download specified by index
-   * @param index index of the file to look up
+   * @brief retrieve the creation time of the download specified by fileName
+   * @param fileName the fileName of active or completed download
    * @return size of the file (total size during download)
    */
-  QDateTime getFileTime(int index) const;
+  QDateTime getFileTime(QUuid moId) const;
 
   /**
-   * @brief retrieve the current progress of the download specified by index
+   * @brief retrieve the current progress of the download specified by fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return progress of the download in percent (integer)
    **/
-  std::pair<int, QString> getProgress(int index) const;
+  std::pair<int, QString> getProgress(QUuid moId) const;
 
   /**
-   * @brief retrieve the current state of the download
+   * @brief retrieve the current state of the download by fileName
    *
    * retrieve the current state of the download. A download usually goes through
    * the following states:
    *   started -> downloading -> fetching mod info -> fetching file info -> done
    * in case of downloads started via nxm-link, file information is fetched first
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return the download state
    **/
-  DownloadState getState(int index) const;
+  DownloadState getState(QUuid moId) const;
 
   /**
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return true if the nexus information for this download is not complete
    **/
-  bool isInfoIncomplete(int index) const;
+  bool isInfoIncomplete(QUuid moId) const;
 
   /**
-   * @brief retrieve the nexus mod id of the download specified by index
+   * @brief retrieve the nexus mod id of the download specified by fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return the nexus mod id
    **/
-  int getModID(int index) const;
+  int getModID(QUuid moId) const;
 
   /**
-   * @brief retrieve the displayable game name of the download specified by the index
+   * @brief retrieve the displayable game name of the download specified by the fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return the displayable game name
    **/
-  QString getDisplayGameName(int index) const;
+  QString getDisplayGameName(QUuid moId) const;
 
   /**
-   * @brief retrieve the game name of the downlaod specified by the index
+   * @brief retrieve the game name of the downlaod specified by the fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return the game name
    **/
-  QString getGameName(int index) const;
+  QString getGameName(QUuid moId) const;
 
   /**
    * @brief determine if the specified file is supposed to be hidden
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return true if the specified file is supposed to be hidden
    */
-  bool isHidden(int index) const;
+  bool isHidden(QUuid moId) const;
 
   /**
-   * @brief retrieve all nexus info of the download specified by index
+   * @brief retrieve all nexus info of the download specified by fileName
    *
-   * @param index index of the file to look up
+   * @param fileName the fileName of active or completed download
    * @return the nexus mod information
    **/
-  const MOBase::ModRepositoryFileInfo* getFileInfo(int index) const;
+  const MOBase::ModRepositoryFileInfo* getFileInfo(QUuid moId) const;
 
   /**
    * @brief mark a download as installed
    *
-   * @param index index of the file to mark installed
+   * @param fileName fileName of the download's file to mark installed
    */
-  void markInstalled(int index);
-
-  void markInstalled(QString download);
+  void markInstalled(QUuid moId);
 
   /**
    * @brief mark a download as uninstalled
    *
-   * @param index index of the file to mark uninstalled
+   * @param fileName fileName of the download's file to mark uninstalled
    */
-  void markUninstalled(int index);
-
-  void markUninstalled(QString download);
+  void markUninstalled(QString fileName);
 
   /**
    * @brief refreshes the list of downloads
    */
   void refreshList();
 
+  /**
+   * @brief initializes the list of downloads
+   */
+  void initializeList();
+
 public:  // IDownloadManager interface:
   int startDownloadURLs(const QStringList& urls);
   int startDownloadNexusFile(int modID, int fileID);
-  QString downloadPath(int id);
+  QString downloadPath(QString moId);
 
   boost::signals2::connection
-  onDownloadComplete(const std::function<void(int)>& callback);
+  onDownloadComplete(const std::function<void(QString)>& callback);
   boost::signals2::connection
-  onDownloadPaused(const std::function<void(int)>& callback);
+  onDownloadPaused(const std::function<void(QString)>& callback);
   boost::signals2::connection
-  onDownloadFailed(const std::function<void(int)>& callback);
+  onDownloadFailed(const std::function<void(QString)>& callback);
   boost::signals2::connection
-  onDownloadRemoved(const std::function<void(int)>& callback);
+  onDownloadRemoved(const std::function<void(QString)>& callback);
 
   /**
    * @brief retrieve a download index from the filename
    * @param fileName file to look up
    * @return index of that download or -1 if it wasn't found
    */
-  int indexByName(const QString& fileName) const;
+  int indexByName(QString fileName) const;
   int indexByInfo(const DownloadInfo* info) const;
+
+  DownloadInfo* getDownloadInfoByFileName(QString fileName) const;
+  DownloadInfo* getDownloadInfoByMoId(QUuid moId) const;
+  DownloadInfo* getDownloadInfoById(int downloadId) const;
+  DownloadInfo& getDownloadInfoByIndex(int index) const;
 
   void pauseAll();
 
 Q_SIGNALS:
 
-  void aboutToUpdate();
-
   /**
    * @brief signals that the specified download has changed
    *
-   * @param row the row that changed. This corresponds to the download index
+   * @param fileName the download that changed
    **/
-  void update(int row);
+  void update(DownloadManager::DownloadInfo* downloadInfo);
 
   /**
    * @brief signals the ui that a message should be displayed
@@ -446,10 +458,10 @@ Q_SIGNALS:
 
   /**
    * @brief emitted whenever the state of a download changes
-   * @param row the row that changed
+   * @param fileName the download that changed
    * @param state the new state
    */
-  void stateChanged(int row, DownloadManager::DownloadState state);
+  void stateChanged(QUuid moId, DownloadManager::DownloadState state);
 
   /**
    * @brief emitted whenever a download completes successfully, reporting the download
@@ -462,46 +474,51 @@ Q_SIGNALS:
    */
   void downloadAdded();
 
+  void downloadAdded(DownloadManager::DownloadInfo* downloadInfo);
+  void downloadRemoved(QUuid moId);
+  void pendingDownloadAdded(QString moId);
+  void pendingDownloadRemoved(QString moId);
+
 public slots:
 
   /**
    * @brief removes the specified download
    *
-   * @param index index of the download to remove
+   * @param fileName fileName of the download to remove
    * @param deleteFile if true, the file will also be deleted from disc, otherwise it is
    *only marked as hidden.
    **/
-  void removeDownload(int index, bool deleteFile);
+  void removeDownload(QUuid moId, bool deleteFile, int flag);
 
   /**
    * @brief restores the specified download to view (which was previously hidden
-   * @param index index of the download to restore
+   * @param fileName fileName of the download to restore
    */
-  void restoreDownload(int index);
+  void restoreDownload(QUuid moId);
 
   /**
    * @brief cancel the specified download. This will lead to the corresponding file to
    *be deleted
    *
-   * @param index index of the download to cancel
+   * @param fileName fileName of the download to cancel
    **/
-  void cancelDownload(int index);
+  void cancelDownload(QUuid moId);
 
-  void pauseDownload(int index);
+  void pauseDownload(QUuid moId);
 
-  void resumeDownload(int index);
+  void resumeDownload(QUuid moId);
 
-  void queryInfo(int index);
+  void queryInfo(QUuid moId);
 
-  void queryInfoMd5(int index);
+  void queryInfoMd5(QUuid moId);
 
-  void visitOnNexus(int index);
+  void visitOnNexus(QUuid moId);
 
-  void openFile(int index);
+  void openFile(QUuid moId);
 
-  void openMetaFile(int index);
+  void openMetaFile(QUuid moId);
 
-  void openInDownloadsFolder(int index);
+  void openInDownloadsFolder(QUuid moId);
 
   void nxmDescriptionAvailable(QString gameName, int modID, QVariant userData,
                                QVariant resultData, int requestID);
@@ -527,7 +544,8 @@ private slots:
 
   void downloadProgress(qint64 bytesReceived, qint64 bytesTotal);
   void downloadReadyRead();
-  void downloadFinished(int index = 0);
+  void downloadFinished();
+  void downloadFinished(QUuid moId);
   void downloadError(QNetworkReply::NetworkError error);
   void metaDataChanged();
   void directoryChanged(const QString& dirctory);
@@ -535,7 +553,7 @@ private slots:
 
 private:
   void createMetaFile(DownloadInfo* info);
-  DownloadManager::DownloadInfo* getDownloadInfo(QString fileName);
+  DownloadManager::DownloadInfo* getDownloadInfo(QUuid moId);
 
 public:
   /** Get a unique filename for a download.
@@ -551,7 +569,7 @@ public:
 
 private:
   void startDownload(QNetworkReply* reply, DownloadInfo* newDownload, bool resume);
-  void resumeDownloadInt(int index);
+  void resumeDownloadInt(QUuid moId);
 
   /**
    * @brief start a download from a url
@@ -568,7 +586,7 @@ private:
   // DownloadInfo-pointer might get invalidated at any time
   DownloadInfo* findDownload(QObject* reply, int* index = nullptr) const;
 
-  void removeFile(int index, bool deleteFile);
+  void removeFile(QUuid moId, bool deleteFile);
 
   void refreshAlphabeticalTranslation();
 
@@ -578,7 +596,7 @@ private:
 
   void setState(DownloadInfo* info, DownloadManager::DownloadState state);
 
-  DownloadInfo* downloadInfoByID(unsigned int id);
+  int getDownloadInfoIndexByMoId(QUuid moId) const;
 
   void removePending(QString gameName, int modID, int fileID);
 
@@ -590,12 +608,12 @@ private:
   static const int AUTOMATIC_RETRIES = 3;
 
 private:
-  NexusInterface* m_NexusInterface;
+  NexusInterface* m_NexusInterface = nullptr;
 
-  OrganizerCore* m_OrganizerCore;
-  QWidget* m_ParentWidget;
+  OrganizerCore* m_OrganizerCore = nullptr;
+  QWidget* m_ParentWidget        = nullptr;
 
-  QVector<std::tuple<QString, int, int>> m_PendingDownloads;
+  QVector<std::tuple<QString, int, int, QString>> m_PendingDownloads;
 
   QVector<DownloadInfo*> m_ActiveDownloads;
 
@@ -624,6 +642,16 @@ private:
   MOBase::IPluginGame const* m_ManagedGame;
 
   QTimer m_TimeoutTimer;
+};
+
+class ScopedDisableDirWatcher
+{
+public:
+  ScopedDisableDirWatcher(DownloadManager* downloadManager);
+  ~ScopedDisableDirWatcher();
+
+private:
+  DownloadManager* m_downloadManager;
 };
 
 #endif  // DOWNLOADMANAGER_H
