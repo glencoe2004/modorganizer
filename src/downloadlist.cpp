@@ -241,9 +241,11 @@ void DownloadList::downloadRemoved(QUuid moId)
     log::debug("Download List - Removing Item: {}", downloadIndex);
     emit beginRemoveRows(QModelIndex(), downloadIndex, downloadIndex);
     m_downloadIndexCache.erase(downloadListItem->moId.toString());
-    m_downloadListItems.removeAt(downloadListItem - m_downloadListItems.begin());
+    m_downloadListItems.removeAt(downloadIndex);
+    for (auto item : m_downloadListItems) {
+      m_downloadIndexCache[item.moId.toString()] = m_downloadListItems.indexOf(item);
+    }
     emit endRemoveRows();
-
     log::debug("Download List Size (after remove): {}", m_downloadListItems.size());
   }
 }

@@ -32,6 +32,7 @@ struct DownloadListItem
   ~DownloadListItem()                                  = default;
   DownloadListItem(const DownloadListItem&)            = default;
   DownloadListItem& operator=(const DownloadListItem&) = default;
+  auto operator<=>(const DownloadListItem&) const      = default;
 
   int pendingIndex{-1};
   bool isPending{false};

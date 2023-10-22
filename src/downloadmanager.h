@@ -430,13 +430,14 @@ public:  // IDownloadManager interface:
    * @param fileName file to look up
    * @return index of that download or -1 if it wasn't found
    */
-  int indexByName(QString fileName) const;
+  QUuid uuidByName(QString fileName) const;
+  QUuid uuidByInfo(const DownloadInfo* info) const;
   int indexByInfo(const DownloadInfo* info) const;
 
   DownloadInfo* getDownloadInfoByFileName(QString fileName) const;
   DownloadInfo* getDownloadInfoByMoId(QUuid moId) const;
   DownloadInfo* getDownloadInfoById(int downloadId) const;
-  DownloadInfo& getDownloadInfoByIndex(int index) const;
+  DownloadInfo* getDownloadInfoByIndex(int index) const;
 
   void pauseAll();
 
@@ -584,13 +585,13 @@ private:
 
   // important: the caller has to lock the list-mutex, otherwise the
   // DownloadInfo-pointer might get invalidated at any time
-  DownloadInfo* findDownload(QObject* reply, int* index = nullptr) const;
+  DownloadInfo* findDownload(QObject* reply, QUuid* id = nullptr) const;
 
   void removeFile(QUuid moId, bool deleteFile);
 
   void refreshAlphabeticalTranslation();
 
-  bool ByName(int LHS, int RHS);
+  bool ByName(QUuid LHS, QUuid RHS);
 
   QString getFileNameFromNetworkReply(QNetworkReply* reply);
 
@@ -615,7 +616,8 @@ private:
 
   QVector<std::tuple<QString, int, int, QString>> m_PendingDownloads;
 
-  QVector<DownloadInfo*> m_ActiveDownloads;
+  QMap<QUuid, DownloadInfo*> m_ActiveDownloads;
+  QList<DownloadInfo*> m_DownloadsByIndex;
 
   QString m_OutputDirectory;
   std::set<int> m_RequestIDs;
