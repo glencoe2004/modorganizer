@@ -120,7 +120,9 @@ QVariant DownloadList::data(const QModelIndex& index, int role) const
     return QVariant();
   }
 
-  const auto& downloadListItem = m_downloadListItems.at(index.row());
+  auto downloadInfo = m_manager.getDownloadInfoByIndex(index.row());
+  auto downloadRow  = m_downloadIndexCache[downloadInfo->m_moId.toString()];
+  const auto& downloadListItem = m_downloadListItems.at(downloadRow);
 
   if (role == Qt::DisplayRole) {
 
@@ -278,9 +280,14 @@ void DownloadList::pendingDownloadRemoved(QString moId)
 bool DownloadList::lessThanPredicate(const QModelIndex& left, const QModelIndex& right)
 {
   int leftIndex   = left.row();
-  int rightIndex  = right.row();
-  auto& lMoId = m_downloadListItems[leftIndex].moId;
-  auto& rMoId = m_downloadListItems[rightIndex].moId;
+  int rightIndex    = right.row();
+  auto downloadInfoLeft = m_manager.getDownloadInfoByIndex(leftIndex);
+  auto downloadInfoRight = m_manager.getDownloadInfoByIndex(rightIndex);
+  auto downloadRowLeft   = m_downloadIndexCache[downloadInfoLeft->m_moId.toString()];
+  auto downloadRowRight  = m_downloadIndexCache[downloadInfoRight->m_moId.toString()];
+
+  auto& lMoId = m_downloadListItems[downloadRowLeft].moId;
+  auto& rMoId = m_downloadListItems[downloadRowRight].moId;
 
   if ((leftIndex < m_manager.numTotalDownloads()) &&
       (rightIndex < m_manager.numTotalDownloads())) {

@@ -41,6 +41,7 @@ along with Mod Organizer.  If not, see <http://www.gnu.org/licenses/>.
 #include <idownloadmanager.h>
 #include <modrepositoryfileinfo.h>
 #include <set>
+
 using namespace boost::accumulators;
 
 namespace MOBase
@@ -51,6 +52,7 @@ class IPluginGame;
 class NexusInterface;
 class PluginContainer;
 class OrganizerCore;
+class DownloadList;
 
 /*!
  * \brief manages downloading of files and provides progress information for gui
@@ -58,6 +60,8 @@ class OrganizerCore;
  **/
 class DownloadManager : public QObject
 {
+  friend class DownloadList;
+
   Q_OBJECT
 
 public:
