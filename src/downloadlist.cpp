@@ -121,6 +121,8 @@ QVariant DownloadList::data(const QModelIndex& index, int role) const
   }
 
   auto downloadInfo = m_manager.getDownloadInfoByIndex(index.row());
+  if (downloadInfo == nullptr || downloadInfo->m_moId.isNull())
+    return QVariant();
   auto downloadRow  = m_downloadIndexCache[downloadInfo->m_moId.toString()];
   const auto& downloadListItem = m_downloadListItems.at(downloadRow);
 
@@ -283,6 +285,9 @@ bool DownloadList::lessThanPredicate(const QModelIndex& left, const QModelIndex&
   int rightIndex    = right.row();
   auto downloadInfoLeft = m_manager.getDownloadInfoByIndex(leftIndex);
   auto downloadInfoRight = m_manager.getDownloadInfoByIndex(rightIndex);
+  if (downloadInfoLeft == nullptr || downloadInfoLeft->m_moId.isNull() ||
+      downloadInfoRight == nullptr || downloadInfoRight->m_moId.isNull())
+    return leftIndex < rightIndex;
   auto downloadRowLeft   = m_downloadIndexCache[downloadInfoLeft->m_moId.toString()];
   auto downloadRowRight  = m_downloadIndexCache[downloadInfoRight->m_moId.toString()];
 
