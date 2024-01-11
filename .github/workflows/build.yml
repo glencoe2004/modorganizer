@@ -14,3 +14,12 @@ jobs:
             7z zlib fmt gtest libbsarch libloot openssl libffi bzip2 python lz4 spdlog
             boost boost-di sip pyqt pybind11 ss licenses explorerpp usvfs
           mo2-dependencies: cmake_common uibase githubpp bsatk esptk archive lootcli game_gamebryo
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact
+          path: D:/a/modorganizer/modorganizer/build/modorganizer_super/modorganizer
+          if-no-files-found: warn
+          retention-days: 0
+          compression-level: 6
