@@ -1,9 +1,6 @@
 name: Lint ModOrganizer 2
 
-on:
-  push:
-  pull_request:
-    types: [opened, synchronize, reopened]
+on: workflow_dispatch
 
 jobs:
   lint:
