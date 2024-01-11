@@ -1314,6 +1314,24 @@
                 </widget>
                </item>
                <item>
+                  <widget class="QPushButton" name="btnQueryDownloadsInfo">
+                    <property name="toolTip">
+                      <string>Query Nexus info for all downloads.</string>
+                    </property>
+                    <property name="whatsThis">
+                      <string>Query Nexus info for all downloads.</string>
+                    </property>
+                    <property name="text">
+                      <string>Query Info</string>
+                    </property>
+                    <property name="icon">
+                      <iconset resource="resources.qrc">
+                        <normaloff>:/MO/gui/resources/view-refresh.png</normaloff>:/MO/gui/resources/view-refresh.png
+                      </iconset>
+                    </property>
+                  </widget>
+                </item>
+               <item>
                 <spacer name="horizontalSpacer_7">
                  <property name="orientation">
                   <enum>Qt::Horizontal</enum>
